@@ -1,47 +1,30 @@
 import json
 import os
+import requests
 
 from dotenv import load_dotenv
-from google import genai
 
 
 # ============================================================
-# LOAD ENVIRONMENT VARIABLES
+# CONFIGURATION
 # ============================================================
 
 load_dotenv()
 
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-API_KEY = os.getenv("GEMINI_API_KEY")
-
-if not API_KEY:
+if not OPENROUTER_API_KEY:
     raise RuntimeError(
-        "GEMINI_API_KEY is not configured. "
+        "OPENROUTER_API_KEY is not configured. "
         "Please add it to your .env file."
     )
 
-
-# ============================================================
-# GEMINI CLIENT
-# ============================================================
-
-client = genai.Client(
-    api_key=API_KEY
-)
-
-
-# IMPORTANT:
-# Your previous API error specifically recommended
-# gemini-3.6-flash. However, current Google documentation
-# also documents gemini-3.7-flash for Interactions.
-#
-# We use the value from .env so you can change it without
-# modifying this Python file.
-
 MODEL_NAME = os.getenv(
-    "GEMINI_MODEL",
-    "gemini-3.7-flash"
+    "OPENROUTER_MODEL",
+    "openrouter/free"
 )
+
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 
 # ============================================================
@@ -62,8 +45,8 @@ You are NOT a government authority.
 
 You are NOT a lawyer.
 
-You must NEVER claim that ownership or legal title has
-been legally certified merely because the AI found a match.
+You must NEVER claim that ownership or legal title
+has been legally certified by this system.
 
 You must distinguish clearly between:
 
@@ -89,9 +72,11 @@ If information is missing, say that it is missing.
 
 If information conflicts, clearly identify the conflict.
 
-The deterministic verification engine calculates the
-verification score. You must NOT independently change,
-override, or invent the score.
+The deterministic Python verification engine calculates
+the verification score.
+
+You must NOT independently change, override, or invent
+the verification score.
 
 Your role is to extract, explain, summarize risks,
 and provide sensible next steps.
@@ -99,120 +84,174 @@ and provide sensible next steps.
 
 
 # ============================================================
-# JSON HELPERS
+# OPENROUTER REQUEST
 # ============================================================
 
-def clean_json(text):
+def call_openrouter(
+    prompt,
+    max_tokens=1500,
+    temperature=0.2
+):
     """
-    Convert Gemini JSON text into a Python dictionary.
+    Send a request to OpenRouter.
 
-    Handles occasional markdown code fences defensively.
+    Returns:
+        Plain text model response.
     """
 
-    if not text:
-        return {}
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://bhoomimitra-ai.onrender.com",
+        "X-Title": "BhoomiMitra AI"
+    }
 
-    text = text.strip()
-
-    if text.startswith("```json"):
-        text = text[len("```json"):].strip()
-
-    elif text.startswith("```"):
-        text = text[len("```"):].strip()
-
-    if text.endswith("```"):
-        text = text[:-3].strip()
+    payload = {
+        "model": MODEL_NAME,
+        "messages": [
+            {
+                "role": "system",
+                "content": SYSTEM_INSTRUCTION
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        "temperature": temperature,
+        "max_tokens": max_tokens
+    }
 
     try:
-        return json.loads(text)
-    except json.JSONDecodeError as error:
-        raise ValueError(
-            f"Gemini returned invalid JSON: {error}\n"
-            f"Response was:\n{text}"
+
+        response = requests.post(
+            OPENROUTER_URL,
+            headers=headers,
+            json=payload,
+            timeout=90
+        )
+
+    except requests.RequestException as error:
+
+        raise RuntimeError(
+            f"Unable to connect to OpenRouter: {error}"
+        )
+
+    if response.status_code != 200:
+
+        try:
+            error_data = response.json()
+
+            error_message = (
+                error_data
+                .get("error", {})
+                .get("message", response.text)
+            )
+
+        except Exception:
+            error_message = response.text
+
+        raise RuntimeError(
+            f"OpenRouter API error "
+            f"({response.status_code}): "
+            f"{error_message}"
+        )
+
+    try:
+
+        data = response.json()
+
+    except ValueError:
+
+        raise RuntimeError(
+            "OpenRouter returned an invalid JSON response."
+        )
+
+    try:
+
+        choices = data.get("choices", [])
+
+        if not choices:
+
+            raise RuntimeError(
+                "OpenRouter returned no choices."
+            )
+
+        message = choices[0].get(
+            "message",
+            {}
+        )
+
+        content = message.get(
+            "content"
+        )
+
+        if not content:
+
+            raise RuntimeError(
+                "OpenRouter returned an empty response."
+            )
+
+        return content.strip()
+
+    except Exception as error:
+
+        raise RuntimeError(
+            f"Unable to read OpenRouter response: {error}"
         )
 
 
 # ============================================================
-# GENERIC INTERACTIONS API CALL
+# JSON CLEANING
 # ============================================================
 
-def create_interaction(
-    prompt,
-    response_schema=None,
-    max_output_tokens=1500
-):
-    """
-    Send a request using the current Gemini Interactions API.
+def clean_json(text):
 
-    This replaces the old:
+    if not text:
+        raise ValueError(
+            "AI returned an empty response."
+        )
 
-        client.models.generate_content(...)
+    text = text.strip()
 
-    approach.
-    """
+    # Remove Markdown code fences
 
-    request = {
-        "model": MODEL_NAME,
-        "system_instruction": SYSTEM_INSTRUCTION,
-        "input": prompt,
-        "generation_config": {
-            "max_output_tokens": max_output_tokens
-        }
-    }
+    if text.startswith("```json"):
 
-    # Structured JSON response when a schema is supplied.
-    if response_schema is not None:
-        request["response_format"] = {
-            "type": "text",
-            "mime_type": "application/json",
-            "schema": response_schema
-        }
+        text = text[7:].strip()
 
-    interaction = client.interactions.create(
-        **request
-    )
+    elif text.startswith("```"):
 
-    # Current SDK convenience property.
-    output_text = getattr(
-        interaction,
-        "output_text",
-        None
-    )
+        text = text[3:].strip()
 
-    if output_text:
-        return output_text
+    if text.endswith("```"):
 
-    # Defensive fallback for SDK/schema variations.
+        text = text[:-3].strip()
+
+    # Find JSON object if AI added explanation before it
+
+    start = text.find("{")
+    end = text.rfind("}")
+
+    if start != -1 and end != -1:
+
+        text = text[start:end + 1]
+
     try:
-        for step in reversed(interaction.steps):
-            if getattr(step, "type", "") == "model_output":
 
-                content = getattr(
-                    step,
-                    "content",
-                    []
-                )
+        return json.loads(text)
 
-                for item in content:
-                    text = getattr(
-                        item,
-                        "text",
-                        None
-                    )
+    except json.JSONDecodeError as error:
 
-                    if text:
-                        return text
-    except Exception:
-        pass
-
-    raise RuntimeError(
-        "Gemini returned an interaction without "
-        "usable text output."
-    )
+        raise ValueError(
+            "AI returned invalid JSON.\n"
+            f"Error: {error}\n"
+            f"Response:\n{text}"
+        )
 
 
 # ============================================================
-# 1. DOCUMENT EXTRACTION
+# LAND DOCUMENT EXTRACTION
 # ============================================================
 
 def extract_land_data_from_text(document_text):
@@ -223,17 +262,34 @@ Analyze the following agricultural land document.
 Extract ONLY information that is explicitly present
 in the document.
 
-Return structured information using the requested schema.
+Return ONLY a valid JSON object.
+
+Do not use Markdown.
+
+Use exactly these fields:
+
+{{
+    "survey_number": "",
+    "village": "",
+    "taluk": "",
+    "district": "",
+    "state": "",
+    "area_acres": null,
+    "owner": "",
+    "mutation_status": "",
+    "document_type": ""
+}}
 
 IMPORTANT:
 
 - Do not guess.
-- Do not infer missing values.
-- If a value is missing, return an empty string.
+- Do not invent missing information.
+- If a value is missing, use an empty string.
+- If area is missing, use null.
 - area_acres must be a number when clearly available.
 - Convert units to acres only when the conversion is
-  unambiguous.
-- Preserve the actual owner name exactly as written.
+  completely unambiguous.
+- Preserve the owner name exactly as written.
 - Preserve the survey number exactly as written.
 
 DOCUMENT:
@@ -241,64 +297,17 @@ DOCUMENT:
 {document_text[:30000]}
 """
 
-    response_schema = {
-        "type": "object",
-        "properties": {
-            "survey_number": {
-                "type": "string"
-            },
-            "village": {
-                "type": "string"
-            },
-            "taluk": {
-                "type": "string"
-            },
-            "district": {
-                "type": "string"
-            },
-            "state": {
-                "type": "string"
-            },
-            "area_acres": {
-                "type": [
-                    "number",
-                    "null"
-                ]
-            },
-            "owner": {
-                "type": "string"
-            },
-            "mutation_status": {
-                "type": "string"
-            },
-            "document_type": {
-                "type": "string"
-            }
-        },
-        "required": [
-            "survey_number",
-            "village",
-            "taluk",
-            "district",
-            "state",
-            "area_acres",
-            "owner",
-            "mutation_status",
-            "document_type"
-        ]
-    }
-
-    response = create_interaction(
-        prompt=prompt,
-        response_schema=response_schema,
-        max_output_tokens=1000
+    response = call_openrouter(
+        prompt,
+        max_tokens=1000,
+        temperature=0
     )
 
     return clean_json(response)
 
 
 # ============================================================
-# 2. VERIFICATION EXPLANATION
+# LAND VERIFICATION EXPLANATION
 # ============================================================
 
 def generate_land_explanation(
@@ -311,24 +320,47 @@ def generate_land_explanation(
 Analyze this BhoomiMitra land verification result.
 
 DOCUMENT-EXTRACTED INFORMATION:
-{json.dumps(extracted, indent=2, ensure_ascii=False)}
+
+{json.dumps(
+    extracted,
+    indent=2,
+    ensure_ascii=False
+)}
+
 
 REFERENCE INFORMATION:
-{json.dumps(reference, indent=2, ensure_ascii=False)}
+
+{json.dumps(
+    reference,
+    indent=2,
+    ensure_ascii=False
+)}
+
 
 DETERMINISTIC VERIFICATION RESULT:
-{json.dumps(verification, indent=2, ensure_ascii=False)}
 
-Explain the result for a normal agricultural land buyer.
+{json.dumps(
+    verification,
+    indent=2,
+    ensure_ascii=False
+)}
 
-Return:
 
-1. A short summary
-2. Why the verification score has this value
-3. Important risks
-4. Actions the buyer should take
-5. Actions the seller should take
-6. A legal/verification disclaimer
+Return ONLY a valid JSON object.
+
+Do not use Markdown.
+
+Use exactly this structure:
+
+{{
+    "summary": "",
+    "why_score": "",
+    "risks": [],
+    "buyer_actions": [],
+    "seller_actions": [],
+    "disclaimer": ""
+}}
+
 
 IMPORTANT:
 
@@ -336,69 +368,30 @@ IMPORTANT:
 - Do not change the score.
 - Do not invent additional risks.
 - Clearly mention important mismatches.
-- If the document and reference record disagree,
+- If document and reference record disagree,
   explain exactly what differs.
 - Never claim legal ownership is certified.
-- Never claim government approval unless it is explicitly
-  present in the supplied information.
+- Never claim government approval unless explicitly supplied.
 - This is decision-support, not legal title certification.
 """
 
-    response_schema = {
-        "type": "object",
-        "properties": {
-            "summary": {
-                "type": "string"
-            },
-            "why_score": {
-                "type": "string"
-            },
-            "risks": {
-                "type": "array",
-                "items": {
-                    "type": "string"
-                }
-            },
-            "buyer_actions": {
-                "type": "array",
-                "items": {
-                    "type": "string"
-                }
-            },
-            "seller_actions": {
-                "type": "array",
-                "items": {
-                    "type": "string"
-                }
-            },
-            "disclaimer": {
-                "type": "string"
-            }
-        },
-        "required": [
-            "summary",
-            "why_score",
-            "risks",
-            "buyer_actions",
-            "seller_actions",
-            "disclaimer"
-        ]
-    }
-
-    response = create_interaction(
-        prompt=prompt,
-        response_schema=response_schema,
-        max_output_tokens=1500
+    response = call_openrouter(
+        prompt,
+        max_tokens=1500,
+        temperature=0.1
     )
 
     return clean_json(response)
 
 
 # ============================================================
-# 3. BUYER AI ASSISTANT
+# BUYER AI CHAT
 # ============================================================
 
-def ask_bhoomimitra(question, property_data):
+def ask_bhoomimitra(
+    question,
+    property_data
+):
 
     prompt = f"""
 A buyer is asking a question about an agricultural
@@ -412,47 +405,48 @@ PROPERTY INFORMATION:
     ensure_ascii=False
 )}
 
+
 BUYER QUESTION:
 
 {question}
 
+
 Answer the buyer clearly and conservatively.
 
-RULES:
+IMPORTANT RULES:
 
 - Use only the supplied property information.
 - Do not invent government information.
 - Do not invent missing property information.
 - Do not certify ownership.
 - Do not provide definitive legal advice.
-- If the information is insufficient, clearly say so.
+- If information is insufficient, clearly say so.
 - Recommend appropriate human, legal, or government
   verification when necessary.
 - Keep the answer understandable to a normal buyer.
 """
 
-    response = create_interaction(
-        prompt=prompt,
-        response_schema=None,
-        max_output_tokens=700
+    return call_openrouter(
+        prompt,
+        max_tokens=700,
+        temperature=0.2
     )
 
-    return response
-
 
 # ============================================================
-# GEMINI CONNECTION TEST
+# CONNECTION TEST
 # ============================================================
 
-def test_gemini_connection():
+def test_openrouter_connection():
 
-    response = create_interaction(
-        prompt=(
-            "Respond with exactly: "
-            "BhoomiMitra AI Gemini connection is working."
-        ),
-        response_schema=None,
-        max_output_tokens=50
+    response = call_openrouter(
+        """
+Respond with exactly:
+
+BhoomiMitra AI OpenRouter connection is working.
+""",
+        max_tokens=50,
+        temperature=0
     )
 
     return response
