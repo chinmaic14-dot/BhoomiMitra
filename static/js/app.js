@@ -72,6 +72,40 @@ if (form) {
                     );
 
 
+                /*
+                 * IMPORTANT:
+                 * Render may return an HTML error page
+                 * instead of JSON when the backend crashes.
+                 *
+                 * Do not blindly call response.json().
+                 */
+
+                const contentType =
+                    response.headers.get(
+                        "content-type"
+                    ) || "";
+
+
+                if (
+                    !contentType.includes(
+                        "application/json"
+                    )
+                ) {
+
+                    const serverText =
+                        await response.text();
+
+                    console.error(
+                        "Server returned non-JSON:",
+                        serverText
+                    );
+
+                    throw new Error(
+                        `Server returned ${response.status} instead of JSON.`
+                    );
+                }
+
+
                 const data =
                     await response.json();
 
@@ -84,11 +118,19 @@ if (form) {
                 );
 
 
-                if (!data.success) {
+                if (
+                    !response.ok ||
+                    !data.success
+                ) {
 
                     result.innerHTML = `
                     <div class="error-box">
-                        ❌ ${data.error}
+
+                        ❌ ${
+                            data.error ||
+                            "Verification failed."
+                        }
+
                     </div>
                     `;
 
@@ -109,8 +151,8 @@ if (form) {
                     </p>
 
                     <a
-                    href="/property/${data.property_id}"
-                    class="btn primary">
+                        href="/property/${data.property_id}"
+                        class="btn primary">
 
                         View AI Verification Report
 
@@ -131,13 +173,21 @@ if (form) {
                     "hidden"
                 );
 
+                console.error(
+                    "Verification error:",
+                    error
+                );
+
                 result.innerHTML = `
                 <div class="error-box">
 
                     ❌ Something went wrong.
 
                     <p>
-                    ${error.message}
+                        ${
+                            error.message ||
+                            "Unable to verify the land document."
+                        }
                     </p>
 
                 </div>
