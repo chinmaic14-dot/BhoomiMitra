@@ -1,0 +1,21 @@
+AGRICULTURAL LAND DOCUMENT
+
+Owner Name: Ramesh Kumar
+
+Survey Number: 123/4
+
+Village: Ramanagara
+
+Taluk: Ramanagara
+
+District: Ramanagara
+
+State: Karnataka
+
+Extent of Land: 3.1 Acres
+
+Mutation Status: Available
+
+Document Type: Agricultural Land Record
+
+The property is intended for agricultural use.

@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+
+<title>Property Verification | BhoomiMitra AI</title>
+
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}">
+
+</head>
+
+<body>
+
+<nav>
+
+<div class="logo">
+🌱 BhoomiMitra <span>AI</span>
+</div>
+
+<div class="nav-links">
+
+<a href="/">Home</a>
+<a href="/buyer">Find Land</a>
+<a href="/seller">Sell Land</a>
+
+</div>
+
+</nav>
+
+
+<div class="page-container">
+
+
+<div class="property-header">
+
+<div>
+
+<div class="badge">
+🤖 AI Verified Analysis
+</div>
+
+<h1>
+🌾 {{ property.village }}
+</h1>
+
+<p>
+Survey No. {{ property.survey_number }}
+</p>
+
+</div>
+
+
+<div class="score-big">
+
+{{ property.verification.score }}
+
+<span>/100</span>
+
+<small>
+{{ property.verification.risk_level }} RISK
+</small>
+
+</div>
+
+</div>
+
+
+<div class="dashboard-grid">
+
+
+<!-- PROPERTY INFORMATION -->
+
+<div class="dashboard-card">
+
+<h2>📋 Property Information</h2>
+
+<div class="data-row">
+<span>Survey Number</span>
+<strong>
+{{ property.survey_number }}
+</strong>
+</div>
+
+<div class="data-row">
+<span>Village</span>
+<strong>
+{{ property.village }}
+</strong>
+</div>
+
+<div class="data-row">
+<span>Taluk</span>
+<strong>
+{{ property.taluk }}
+</strong>
+</div>
+
+<div class="data-row">
+<span>District</span>
+<strong>
+{{ property.district }}
+</strong>
+</div>
+
+<div class="data-row">
+<span>Area</span>
+<strong>
+{{ property.area_acres }} acres
+</strong>
+</div>
+
+<div class="data-row">
+<span>Owner in document</span>
+<strong>
+{{ property.owner }}
+</strong>
+</div>
+
+<div class="data-row">
+<span>Mutation</span>
+<strong>
+{{ property.mutation_status }}
+</strong>
+</div>
+
+</div>
+
+
+<!-- SCORE -->
+
+<div class="dashboard-card score-card">
+
+<h2>🛡 Verification Score</h2>
+
+<div class="circle-score">
+
+{{ property.verification.score }}
+
+</div>
+
+<div class="risk-label">
+{{ property.verification.risk_level }} RISK
+</div>
+
+<p>
+The score represents consistency across
+the supplied document and reference data.
+It is not a legal title certificate.
+</p>
+
+</div>
+
+
+</div>
+
+
+<!-- AI PIPELINE -->
+
+<div class="dashboard-card">
+
+<h2>
+🤖 How BhoomiMitra AI Reached This Result
+</h2>
+
+<div class="ai-timeline">
+
+<div class="timeline-item">
+<span>1</span>
+<div>
+<strong>Gemini Document Intelligence</strong>
+<p>
+Extracted structured information
+from the uploaded document.
+</p>
+</div>
+</div>
+
+
+<div class="timeline-item">
+<span>2</span>
+<div>
+<strong>Reference Comparison</strong>
+<p>
+Python verification engine compared
+the extracted information against
+reference records.
+</p>
+</div>
+</div>
+
+
+<div class="timeline-item">
+<span>3</span>
+<div>
+<strong>Risk Detection</strong>
+<p>
+Detected mismatches and review items.
+</p>
+</div>
+</div>
+
+
+<div class="timeline-item">
+<span>4</span>
+<div>
+<strong>Gemini Explanation</strong>
+<p>
+Converted the verification findings
+into an understandable explanation.
+</p>
+</div>
+</div>
+
+</div>
+
+</div>
+
+
+<!-- CHECKS -->
+
+<div class="dashboard-card">
+
+<h2>🔍 Verification Checks</h2>
+
+<div class="checks">
+
+{% for check in property.verification.checks %}
+
+<div class="check">
+
+<div>
+
+<strong>
+{{ check.name }}
+</strong>
+
+<p>
+{{ check.message }}
+</p>
+
+</div>
+
+<span class="status">
+{{ check.status }}
+</span>
+
+</div>
+
+{% endfor %}
+
+</div>
+
+</div>
+
+
+<!-- AI EXPLANATION -->
+
+<div class="dashboard-card ai-result">
+
+<h2>
+🧠 Gemini AI Assessment
+</h2>
+
+<div class="summary">
+
+{{ property.explanation.summary }}
+
+</div>
+
+
+<h3>Why this score?</h3>
+
+<p>
+{{ property.explanation.why_score }}
+</p>
+
+
+<h3>⚠️ Risks</h3>
+
+<ul>
+
+{% for risk in property.explanation.risks %}
+
+<li>{{ risk }}</li>
+
+{% endfor %}
+
+</ul>
+
+
+<h3>👤 Buyer Actions</h3>
+
+<ul>
+
+{% for action in property.explanation.buyer_actions %}
+
+<li>{{ action }}</li>
+
+{% endfor %}
+
+</ul>
+
+
+<h3>🌾 Seller Actions</h3>
+
+<ul>
+
+{% for action in property.explanation.seller_actions %}
+
+<li>{{ action }}</li>
+
+{% endfor %}
+
+</ul>
+
+
+<div class="disclaimer">
+
+<strong>Important:</strong>
+
+{{ property.explanation.disclaimer }}
+
+</div>
+
+</div>
+
+
+<!-- MAP -->
+
+<div class="dashboard-card">
+
+<h2>🗺 Land Location</h2>
+
+<div class="map-placeholder">
+
+📍
+
+<p>
+Map integration can be connected to
+authorized cadastral/GIS data in the
+production version.
+</p>
+
+</div>
+
+</div>
+
+
+<!-- ASK AI -->
+
+<div class="dashboard-card ask-ai">
+
+<h2>
+💬 Ask BhoomiMitra AI
+</h2>
+
+<p>
+Ask questions about this property's
+verification information.
+</p>
+
+
+<textarea
+id="aiQuestion"
+placeholder="Example: Why is this property marked medium risk?"
+></textarea>
+
+
+<button
+class="btn primary"
+onclick="askAI('{{ property.id }}')">
+
+🤖 Ask AI
+
+</button>
+
+
+<div id="aiAnswer"></div>
+
+</div>
+
+
+</div>
+
+
+<script>
+
+async function askAI(propertyId) {
+
+const question =
+document.getElementById(
+"aiQuestion"
+).value.trim();
+
+if (!question) {
+
+alert("Please enter a question.");
+
+return;
+
+}
+
+
+const answerBox =
+document.getElementById(
+"aiAnswer"
+);
+
+answerBox.innerHTML =
+"🤖 BhoomiMitra AI is thinking...";
+
+
+try {
+
+const response =
+await fetch("/ask-ai", {
+
+method: "POST",
+
+headers: {
+"Content-Type":
+"application/json"
+},
+
+body: JSON.stringify({
+
+question: question,
+
+property_id: propertyId
+
+})
+
+});
+
+
+const data =
+await response.json();
+
+
+if (!data.success) {
+
+answerBox.innerHTML =
+"❌ " + data.error;
+
+return;
+
+}
+
+
+answerBox.innerHTML = `
+<div class="ai-answer">
+<strong>🤖 BhoomiMitra AI</strong>
+<p>${data.answer}</p>
+</div>
+`;
+
+} catch(error) {
+
+answerBox.innerHTML =
+"❌ Unable to contact AI.";
+
+}
+
+}
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+
+<title>List Your Land | BhoomiMitra AI</title>
+
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}">
+
+</head>
+
+<body>
+
+<nav>
+
+<div class="logo">
+🌱 BhoomiMitra <span>AI</span>
+</div>
+
+<div class="nav-links">
+<a href="/">Home</a>
+<a href="/buyer">Find Land</a>
+<a href="/seller">Sell Land</a>
+</div>
+
+</nav>
+
+
+<div class="page-container">
+
+<div class="form-card">
+
+<h1>🌾 List Your Agricultural Land</h1>
+
+<p>
+Upload your land document and let BhoomiMitra AI
+analyze the available information.
+</p>
+
+
+<form id="verificationForm"
+      enctype="multipart/form-data">
+
+
+<label>Seller Name</label>
+
+<input
+type="text"
+name="seller_name"
+placeholder="Enter seller name"
+required
+>
+
+
+<label>Expected Price</label>
+
+<input
+type="text"
+name="price"
+placeholder="Example: ₹25 Lakhs"
+>
+
+
+<label>Survey Number</label>
+
+<input
+type="text"
+name="survey_number"
+placeholder="Example: 123/4"
+required
+>
+
+
+<label>Village</label>
+
+<input
+type="text"
+name="village"
+placeholder="Example: Ramanagara"
+>
+
+
+<label>Area in Acres</label>
+
+<input
+type="number"
+step="0.01"
+name="area"
+placeholder="Example: 2.5"
+>
+
+
+<label>Land Document</label>
+
+<input
+type="file"
+name="document"
+accept=".pdf,.txt"
+required
+>
+
+
+<div class="ai-notice">
+
+🤖 <strong>Gemini AI will:</strong>
+
+<ul>
+<li>Read the document</li>
+<li>Extract land information</li>
+<li>Identify important fields</li>
+<li>Explain verification findings</li>
+</ul>
+
+</div>
+
+
+<button
+type="submit"
+class="btn primary full">
+
+🔍 Verify My Land
+
+</button>
+
+</form>
+
+
+<div id="loadingBox"
+     class="loading-box hidden">
+
+<div class="spinner"></div>
+
+<h3>🤖 BhoomiMitra AI is working...</h3>
+
+<p id="loadingText">
+Reading your document...
+</p>
+
+<div class="steps">
+
+<div>📄 Document received</div>
+<div>🤖 Gemini extracting information</div>
+<div>🔍 Comparing reference records</div>
+<div>⚠️ Detecting risks</div>
+<div>🧠 Generating AI explanation</div>
+
+</div>
+
+</div>
+
+
+<div id="resultBox"></div>
+
+</div>
+
+</div>
+
+
+<script
+src="{{ url_for('static', filename='js/app.js') }}">
+</script>
+
+</body>
+</html>

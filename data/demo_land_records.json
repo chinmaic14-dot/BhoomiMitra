@@ -1,0 +1,26 @@
+[
+  {
+    "survey_number": "123/4",
+    "village": "Ramanagara",
+    "taluk": "Ramanagara",
+    "district": "Ramanagara",
+    "state": "Karnataka",
+    "area_acres": 2.5,
+    "owner": "Ramesh Kumar",
+    "mutation_status": "Available",
+    "boundary_status": "Consistent",
+    "source": "Demo Government Reference Dataset"
+  },
+  {
+    "survey_number": "456/2",
+    "village": "Mandya",
+    "taluk": "Mandya",
+    "district": "Mandya",
+    "state": "Karnataka",
+    "area_acres": 3.2,
+    "owner": "Suresh Gowda",
+    "mutation_status": "Available",
+    "boundary_status": "Review Required",
+    "source": "Demo Government Reference Dataset"
+  }
+]

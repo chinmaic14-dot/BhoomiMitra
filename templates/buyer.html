@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+
+<title>Find Land | BhoomiMitra AI</title>
+
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}">
+
+</head>
+
+<body>
+
+<nav>
+
+<div class="logo">
+🌱 BhoomiMitra <span>AI</span>
+</div>
+
+<div class="nav-links">
+
+<a href="/">Home</a>
+<a href="/buyer">Find Land</a>
+<a href="/seller">Sell Land</a>
+
+</div>
+
+</nav>
+
+
+<div class="page-container">
+
+<h1>🏡 Agricultural Land Marketplace</h1>
+
+<p>
+Explore properties with transparent
+AI-assisted verification information.
+</p>
+
+
+<div class="property-grid">
+
+{% if properties %}
+
+{% for item in properties %}
+
+<div class="property-card">
+
+<div class="property-top">
+
+<h2>
+🌾 {{ item.village or "Agricultural Land" }}
+</h2>
+
+<span class="score">
+{{ item.verification.score }}/100
+</span>
+
+</div>
+
+
+<p>
+<strong>Survey:</strong>
+{{ item.survey_number }}
+</p>
+
+
+<p>
+<strong>Area:</strong>
+{{ item.area_acres }}
+acres
+</p>
+
+
+<p>
+<strong>Seller:</strong>
+{{ item.seller_name }}
+</p>
+
+
+<p>
+<strong>District:</strong>
+{{ item.district }}
+</p>
+
+
+<div class="risk
+{% if item.verification.risk_level == 'LOW' %}
+low
+{% elif item.verification.risk_level == 'MEDIUM' %}
+medium
+{% else %}
+high
+{% endif %}
+">
+
+{{ item.verification.risk_level }}
+RISK
+
+</div>
+
+
+<a
+href="/property/{{ item.id }}"
+class="btn primary full">
+
+View Verification
+
+</a>
+
+</div>
+
+{% endfor %}
+
+{% else %}
+
+<div class="empty-state">
+
+<div>🌱</div>
+
+<h2>No properties yet</h2>
+
+<p>
+Seller listings will appear here after
+verification.
+</p>
+
+<a href="/seller"
+class="btn primary">
+
+List First Property
+
+</a>
+
+</div>
+
+{% endif %}
+
+</div>
+
+</div>
+
+</body>
+</html>
