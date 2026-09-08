@@ -6,25 +6,23 @@ from dotenv import load_dotenv
 
 
 # ============================================================
-# CONFIGURATION
+# ENVIRONMENT
 # ============================================================
 
 load_dotenv()
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-
-if not OPENROUTER_API_KEY:
-    raise RuntimeError(
-        "OPENROUTER_API_KEY is not configured. "
-        "Please add it to your .env file."
-    )
+OPENROUTER_API_KEY = os.getenv(
+    "OPENROUTER_API_KEY"
+)
 
 MODEL_NAME = os.getenv(
     "OPENROUTER_MODEL",
     "openrouter/free"
 )
 
-OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+OPENROUTER_URL = (
+    "https://openrouter.ai/api/v1/chat/completions"
+)
 
 
 # ============================================================
@@ -84,7 +82,7 @@ and provide sensible next steps.
 
 
 # ============================================================
-# OPENROUTER REQUEST
+# OPENROUTER CALL
 # ============================================================
 
 def call_openrouter(
@@ -92,63 +90,109 @@ def call_openrouter(
     max_tokens=1500,
     temperature=0.2
 ):
-    """
-    Send a request to OpenRouter.
 
-    Returns:
-        Plain text model response.
-    """
+    if not OPENROUTER_API_KEY:
+
+        raise RuntimeError(
+            "OPENROUTER_API_KEY is not configured."
+        )
 
     headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://bhoomimitra-ai.onrender.com",
-        "X-Title": "BhoomiMitra AI"
+
+        "Authorization":
+            f"Bearer {OPENROUTER_API_KEY}",
+
+        "Content-Type":
+            "application/json",
+
+        "HTTP-Referer":
+            "https://bhoomimitra-3.onrender.com",
+
+        "X-Title":
+            "BhoomiMitra AI"
     }
 
     payload = {
-        "model": MODEL_NAME,
+
+        "model":
+            MODEL_NAME,
+
         "messages": [
+
             {
-                "role": "system",
-                "content": SYSTEM_INSTRUCTION
+                "role":
+                    "system",
+
+                "content":
+                    SYSTEM_INSTRUCTION
             },
+
             {
-                "role": "user",
-                "content": prompt
+                "role":
+                    "user",
+
+                "content":
+                    prompt
             }
+
         ],
-        "temperature": temperature,
-        "max_tokens": max_tokens
+
+        "temperature":
+            temperature,
+
+        "max_tokens":
+            max_tokens
     }
 
     try:
 
         response = requests.post(
+
             OPENROUTER_URL,
+
             headers=headers,
+
             json=payload,
+
             timeout=90
+        )
+
+    except requests.Timeout:
+
+        raise RuntimeError(
+            "OpenRouter request timed out. "
+            "Please try again."
         )
 
     except requests.RequestException as error:
 
         raise RuntimeError(
-            f"Unable to connect to OpenRouter: {error}"
+            "Unable to connect to OpenRouter: "
+            f"{error}"
         )
+
+    # --------------------------------------------------------
+    # HTTP ERROR
+    # --------------------------------------------------------
 
     if response.status_code != 200:
 
         try:
+
             error_data = response.json()
 
-            error_message = (
-                error_data
-                .get("error", {})
-                .get("message", response.text)
+            error_object = error_data.get(
+                "error",
+                {}
+            )
+
+            error_message = error_object.get(
+                "message",
+                response.text
             )
 
         except Exception:
+
             error_message = response.text
 
         raise RuntimeError(
@@ -157,6 +201,10 @@ def call_openrouter(
             f"{error_message}"
         )
 
+    # --------------------------------------------------------
+    # JSON RESPONSE
+    # --------------------------------------------------------
+
     try:
 
         data = response.json()
@@ -164,82 +212,123 @@ def call_openrouter(
     except ValueError:
 
         raise RuntimeError(
-            "OpenRouter returned an invalid JSON response."
+            "OpenRouter returned invalid JSON."
         )
 
-    try:
+    # --------------------------------------------------------
+    # CHOICES
+    # --------------------------------------------------------
 
-        choices = data.get("choices", [])
+    choices = data.get(
+        "choices",
+        []
+    )
 
-        if not choices:
-
-            raise RuntimeError(
-                "OpenRouter returned no choices."
-            )
-
-        message = choices[0].get(
-            "message",
-            {}
-        )
-
-        content = message.get(
-            "content"
-        )
-
-        if not content:
-
-            raise RuntimeError(
-                "OpenRouter returned an empty response."
-            )
-
-        return content.strip()
-
-    except Exception as error:
+    if not choices:
 
         raise RuntimeError(
-            f"Unable to read OpenRouter response: {error}"
+            "OpenRouter returned no choices."
         )
+
+    message = choices[0].get(
+        "message",
+        {}
+    )
+
+    content = message.get(
+        "content"
+    )
+
+    if isinstance(
+        content,
+        list
+    ):
+
+        content = "".join(
+
+            item.get(
+                "text",
+                ""
+            )
+
+            for item in content
+
+            if isinstance(
+                item,
+                dict
+            )
+        )
+
+    if not content:
+
+        raise RuntimeError(
+            "OpenRouter returned an empty response."
+        )
+
+    return str(
+        content
+    ).strip()
 
 
 # ============================================================
-# JSON CLEANING
+# CLEAN JSON
 # ============================================================
 
 def clean_json(text):
 
     if not text:
+
         raise ValueError(
             "AI returned an empty response."
         )
 
     text = text.strip()
 
-    # Remove Markdown code fences
+    # Remove markdown code fences
 
-    if text.startswith("```json"):
+    if text.startswith(
+        "```json"
+    ):
 
         text = text[7:].strip()
 
-    elif text.startswith("```"):
+    elif text.startswith(
+        "```"
+    ):
 
         text = text[3:].strip()
 
-    if text.endswith("```"):
+    if text.endswith(
+        "```"
+    ):
 
         text = text[:-3].strip()
 
-    # Find JSON object if AI added explanation before it
+    # Find JSON object
 
-    start = text.find("{")
-    end = text.rfind("}")
+    start = text.find(
+        "{"
+    )
 
-    if start != -1 and end != -1:
+    end = text.rfind(
+        "}"
+    )
 
-        text = text[start:end + 1]
+    if (
+        start != -1
+        and end != -1
+        and end > start
+    ):
+
+        text = text[
+            start:end + 1
+        ]
 
     try:
 
-        return json.loads(text)
+        return json.loads(
+            text
+        )
 
     except json.JSONDecodeError as error:
 
@@ -251,10 +340,12 @@ def clean_json(text):
 
 
 # ============================================================
-# LAND DOCUMENT EXTRACTION
+# EXTRACT LAND DATA
 # ============================================================
 
-def extract_land_data_from_text(document_text):
+def extract_land_data_from_text(
+    document_text
+):
 
     prompt = f"""
 Analyze the following agricultural land document.
@@ -298,16 +389,21 @@ DOCUMENT:
 """
 
     response = call_openrouter(
+
         prompt,
+
         max_tokens=1000,
+
         temperature=0
     )
 
-    return clean_json(response)
+    return clean_json(
+        response
+    )
 
 
 # ============================================================
-# LAND VERIFICATION EXPLANATION
+# GENERATE LAND EXPLANATION
 # ============================================================
 
 def generate_land_explanation(
@@ -327,7 +423,6 @@ DOCUMENT-EXTRACTED INFORMATION:
     ensure_ascii=False
 )}
 
-
 REFERENCE INFORMATION:
 
 {json.dumps(
@@ -336,7 +431,6 @@ REFERENCE INFORMATION:
     ensure_ascii=False
 )}
 
-
 DETERMINISTIC VERIFICATION RESULT:
 
 {json.dumps(
@@ -344,7 +438,6 @@ DETERMINISTIC VERIFICATION RESULT:
     indent=2,
     ensure_ascii=False
 )}
-
 
 Return ONLY a valid JSON object.
 
@@ -361,7 +454,6 @@ Use exactly this structure:
     "disclaimer": ""
 }}
 
-
 IMPORTANT:
 
 - Explain the score using ONLY the supplied verification result.
@@ -376,16 +468,21 @@ IMPORTANT:
 """
 
     response = call_openrouter(
+
         prompt,
+
         max_tokens=1500,
+
         temperature=0.1
     )
 
-    return clean_json(response)
+    return clean_json(
+        response
+    )
 
 
 # ============================================================
-# BUYER AI CHAT
+# BUYER AI
 # ============================================================
 
 def ask_bhoomimitra(
@@ -405,11 +502,9 @@ PROPERTY INFORMATION:
     ensure_ascii=False
 )}
 
-
 BUYER QUESTION:
 
 {question}
-
 
 Answer the buyer clearly and conservatively.
 
@@ -427,8 +522,11 @@ IMPORTANT RULES:
 """
 
     return call_openrouter(
+
         prompt,
+
         max_tokens=700,
+
         temperature=0.2
     )
 
@@ -440,12 +538,15 @@ IMPORTANT RULES:
 def test_openrouter_connection():
 
     response = call_openrouter(
+
         """
 Respond with exactly:
 
 BhoomiMitra AI OpenRouter connection is working.
 """,
+
         max_tokens=50,
+
         temperature=0
     )
 

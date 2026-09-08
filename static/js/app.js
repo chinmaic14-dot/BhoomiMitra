@@ -30,10 +30,10 @@ if (form) {
 
             const steps = [
                 "📄 Reading uploaded document...",
-                "🤖 Gemini is extracting land information...",
+                "🤖 BhoomiMitra AI is extracting land information...",
                 "🔍 Comparing with reference records...",
                 "⚠️ Detecting inconsistencies...",
-                "🧠 Gemini is generating explanation..."
+                "🧠 BhoomiMitra AI is generating explanation..."
             ];
 
             let index = 0;
